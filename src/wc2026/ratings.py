@@ -79,26 +79,27 @@ def revert_to_prior(dynamic: float, base: float, r: float) -> float:
     return (1.0 - r) * dynamic + r * base
 
 
-def compute_ratings(
-    df: pd.DataFrame,
-    home_advantage: float = HOME_ADVANTAGE,
-    default_elo: float = DEFAULT_ELO,
-) -> pd.DataFrame:
-    """Run chronological Elo over normalized results; return a ratings table.
+def _run_elo(df: pd.DataFrame, home_advantage: float, default_elo: float):
+    """Single chronological Elo pass.
 
-    `df` must carry the data_loader canonical columns (date, home_team,
-    away_team, home_score, away_score, tournament, neutral). Returns one row per
-    team — team, rating, matches, last_date — sorted by rating descending.
+    Returns (sorted_df, pre_home, pre_away, ratings, matches, last_date), where
+    pre_home/pre_away are each match's PRE-match ratings (aligned to sorted_df)
+    and ratings/matches/last_date are the final per-team state. Shared by
+    compute_ratings (final table) and rate_matches (training snapshots).
     """
-    df = df.sort_values("date")
+    df = df.sort_values("date").reset_index(drop=True)
     ratings: dict[str, float] = {}
     matches: dict[str, int] = {}
     last_date: dict[str, object] = {}
+    pre_home: list[float] = []
+    pre_away: list[float] = []
 
     for row in df.itertuples(index=False):
         home, away = row.home_team, row.away_team
         rh = ratings.get(home, default_elo)
         ra = ratings.get(away, default_elo)
+        pre_home.append(rh)
+        pre_away.append(ra)
 
         adv = 0.0 if row.neutral else home_advantage
         exp_home = expected_score(rh + adv, ra)
@@ -114,6 +115,21 @@ def compute_ratings(
             matches[team] = matches.get(team, 0) + 1
             last_date[team] = row.date
 
+    return df, pre_home, pre_away, ratings, matches, last_date
+
+
+def compute_ratings(
+    df: pd.DataFrame,
+    home_advantage: float = HOME_ADVANTAGE,
+    default_elo: float = DEFAULT_ELO,
+) -> pd.DataFrame:
+    """Run chronological Elo over normalized results; return a ratings table.
+
+    `df` must carry the data_loader canonical columns (date, home_team,
+    away_team, home_score, away_score, tournament, neutral). Returns one row per
+    team — team, rating, matches, last_date — sorted by rating descending.
+    """
+    _, _, _, ratings, matches, last_date = _run_elo(df, home_advantage, default_elo)
     table = pd.DataFrame({
         "team": list(ratings.keys()),
         "rating": list(ratings.values()),
@@ -121,3 +137,21 @@ def compute_ratings(
         "last_date": [last_date[t] for t in ratings],
     })
     return table.sort_values("rating", ascending=False).reset_index(drop=True)
+
+
+def rate_matches(
+    df: pd.DataFrame,
+    home_advantage: float = HOME_ADVANTAGE,
+    default_elo: float = DEFAULT_ELO,
+) -> pd.DataFrame:
+    """Return `df` (sorted by date) with each match's PRE-match Elo attached.
+
+    Adds `elo_home_pre` and `elo_away_pre` columns — the ratings going into the
+    match, before its result is applied. This is the training covariate for the
+    Elo→goals regression in goal_model.py.
+    """
+    sdf, pre_home, pre_away, *_ = _run_elo(df, home_advantage, default_elo)
+    out = sdf.copy()
+    out["elo_home_pre"] = pre_home
+    out["elo_away_pre"] = pre_away
+    return out

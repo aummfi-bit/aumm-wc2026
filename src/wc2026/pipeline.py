@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from .poisson_model import dixon_coles_grid, outcome_probabilities
 from .optimizer import best_prediction
+from .goal_model import GoalModelParams, expected_goals
 
 
 def predict_match(
@@ -47,7 +48,33 @@ def predict_match(
     }
 
 
+def predict_match_from_elo(
+    elo_home: float,
+    elo_away: float,
+    params: GoalModelParams,
+    *,
+    host_home: bool = False,
+    host_away: bool = False,
+    knockout: bool = False,
+    rho: float = -0.05,
+) -> dict:
+    """Full chain for one match: two Elo ratings -> EV-optimal prediction.
+
+    Composes expected_goals (Elo -> mu, with host/KO adjustments) and
+    predict_match (Dixon-Coles grid -> optimizer). Returns the same record as
+    predict_match plus the expected goals used.
+    """
+    mu_home, mu_away = expected_goals(
+        elo_home, elo_away, params,
+        host_home=host_home, host_away=host_away, knockout=knockout,
+    )
+    record = predict_match(mu_home, mu_away, rho=rho, knockout=knockout)
+    record["mu_home"] = round(mu_home, 2)
+    record["mu_away"] = round(mu_away, 2)
+    return record
+
+
 if __name__ == "__main__":
-    # Demo with hand-set expected goals until ratings.py is wired to real data.
+    # Demo with hand-set expected goals (no data needed).
     demo = predict_match(mu_home=2.1, mu_away=0.7)
     print(demo)

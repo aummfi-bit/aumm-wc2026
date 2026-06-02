@@ -9,7 +9,7 @@ import pytest
 
 from wc2026.ratings import (
     expected_score, update_elo, margin_multiplier, match_importance,
-    revert_to_prior, compute_ratings, DEFAULT_ELO,
+    revert_to_prior, compute_ratings, rate_matches, DEFAULT_ELO,
 )
 from wc2026.data_loader import MARTJ42_DIR, load_results
 
@@ -81,6 +81,15 @@ def test_home_advantage_only_off_neutral():
     a_neutral = neutral.loc[neutral.team == "A", "rating"].iloc[0]
     a_home = home.loc[home.team == "A", "rating"].iloc[0]
     assert a_neutral > a_home
+
+
+def test_rate_matches_adds_prematch_elo():
+    out = rate_matches(_repeated_wins(3))
+    assert "elo_home_pre" in out.columns and "elo_away_pre" in out.columns
+    assert len(out) == 3
+    assert out.iloc[0]["elo_home_pre"] == DEFAULT_ELO      # first match: cold start
+    assert out.iloc[0]["elo_away_pre"] == DEFAULT_ELO
+    assert out.iloc[2]["elo_home_pre"] > out.iloc[0]["elo_home_pre"]  # winner climbs
 
 
 @pytest.mark.skipif(
