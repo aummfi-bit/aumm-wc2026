@@ -8,8 +8,10 @@ between the two teams' goals that a naive independent Poisson misses:
      (parameter rho) that re-weights the 0-0, 1-0, 0-1, 1-1 cells. This is the
      classic Dixon & Coles (1997) approach and is well validated for football.
      It specifically fixes the cells that matter most to us — low scores
-     dominate, and for our pool the only draws that EVER score points are exact
-     low-score draws (0-0, 1-1). Getting those probabilities right is high value.
+     dominate, and for our pool any correct draw call already banks the
+     goal-difference tier (15/30), while nailing the exact low-score draw
+     (0-0, 1-1) adds the jump to 25/50 plus the exact-score tiebreaker. Getting
+     those cell probabilities right is high value.
 
   2. Bivariate Poisson: induces positive correlation via a shared component
      lambda_cov. A different mechanism for the same goal.

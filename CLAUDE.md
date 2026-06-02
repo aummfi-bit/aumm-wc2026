@@ -14,7 +14,7 @@ The tournament: 48 teams, 104 matches, hosted across USA, Canada, and Mexico. Gr
 stage (72 matches) then a knockout bracket of 32 matches (Round of 32 → Round of 16 →
 Quarters → Semis → Third-place → Final).
 
-## The scoring system (CONFIRMED from dacopa.com/bolao/regras — do not re-derive)
+## The scoring system (CONFIRMED against the live Dacopa scoring simulator + the dacopa.com/bolao/regras rules page — do not re-derive)
 
 Per match you predict a **scoreline** (e.g. 2–1). Points are awarded on a 6-tier ladder
 based on how close the prediction is. Tiers are checked top-down; you get the highest one
@@ -24,38 +24,40 @@ that matches.
 |------|-----------|-----------|-------------------|
 | 1 | Exact score | 25 | 50 |
 | 2 | Correct winner + winner's goal count correct | 18 | 36 |
-| 3 | Correct winner + goal difference correct | 15 | 30 |
+| 3 | Correct **signed** goal difference (right winner + right margin — *or any draw guess on a real draw*) | 15 | 30 |
 | 4 | Correct winner + loser's goal count correct | 12 | 24 |
-| 5 | Correct winner only (or correctly predicted a draw, any score) → see draw note | 10 | 20 |
+| 5 | Correct winner only | 10 | 20 |
 | 6 | Nothing correct | 0 | 0 |
 
 ### Critical scoring subtleties (these drive strategy — verified against the official examples)
 
-1. **Draws are binary: exact score or zero.** For a real draw, tiers 2–4 collapse (there
-   is no "winner", and goal difference is always 0 so it carries no information). Official
-   example: real 0–0, you guessed 1–1 → **0 points**. The only way to score on a draw is
-   tier 1 (exact). So predicting a draw is high-variance: nail 0–0 / 1–1 exactly or get
-   nothing. Tier 5's "correctly predicted a draw" only pays if... actually it does NOT pay
-   partial credit — confirmed 0. Treat draw predictions as all-or-nothing on exact score.
+1. **Draws score the goal-difference tier — they are NOT exact-or-zero.** A real draw has
+   no winner, so tiers 2/4/5 (which all require a winner) can't apply. But every draw
+   prediction has goal difference 0, which matches a real draw's 0, so **any draw guess on
+   a real draw scores tier 3 = 15** (30 in knockouts), and **25/50 if the score is also
+   exact**. Only a *decisive* prediction on a real draw scores 0. (Dacopa simulator, real
+   3–3: guess 3–3 → 25; 2–2 / 1–1 / 0–0 → 15; 3–0 / 3–1 / 2–1 → 0.) This makes predicting a
+   draw a **low-variance, solid-floor play**, not the gamble an earlier draft assumed —
+   strategically important, especially in knockouts (see #3).
 
-   **KNOWN AMBIGUITY — resolve before locking predictions.** Dacopa's marketing example
-   lists guess `1-0` vs real `2-1` as "winner only = 10". But `1-0` has goal difference +1,
-   equal to the real +1, so a strict top-down ladder scores it as the goal-difference tier
-   (15). The rule TEXT ("a win where you missed winner's goals, loser's goals AND goal
-   difference") implies the strict ladder. `scoring.py` defaults to the strict,
-   internally-consistent ladder. Action item: verify against the live app (make a throwaway
-   prediction, check the points) and adjust scoring.py if the app scores it as 10. Affects
-   optimizer EV at the margin.
+   **Tier 3 is the SIGNED goal difference**, which resolves the old "ambiguity": real 2–1
+   vs guess 1–0 scores **15**, because 1–0's diff +1 equals the real +1 (it is *not* 10).
+   `scoring.py` implements exactly this and is simulator-verified — no config flag needed.
 
 2. **All knockout matches are weight 2×** (Round of 32 through Final, including
    third-place). 32 knockout matches × 2 ≈ the weight of 64 group matches, nearly equal to
    all 72 group games combined. **Knockout precision is where the pool is won.**
 
 3. **Knockouts are scored at the end of regulation (90 min) ONLY.** Extra-time goals and
-   penalties DO NOT count. A game that is 1–1 after 90, goes to ET, and is decided on pens
-   is scored as **1–1** for prediction purposes. → Regulation draws are far more common in
-   the scoring than intuition suggests for knockouts. Up-weight draw probability in KO
-   rounds accordingly.
+   the penalty shootout DO NOT count. A game that is 1–1 after 90, then won 2–1 in extra
+   time (or decided on pens), is scored as **1–1** for prediction purposes. → Every KO game
+   that reaches extra time is scored as its (usually level) 90' result, so **regulation
+   draws are far more common in KO scoring than intuition suggests** — up-weight KO draw
+   probability accordingly, and a correct KO draw call pays a **30-point floor** (15 × 2).
+   Modeling implication: the KO model should predict the 90-minute score, and historical KO
+   results must be stored as 90-minute scores (ET goals and pens stripped). (Confirmed
+   against dacopa.com/bolao/regras: *"Vale o placar do tempo regulamentar (90 minutos). Gols
+   na prorrogação não contam. Pênaltis não contam."*)
 
 4. **WO/walkover** counts as the real 3–0 result. **Postponed** games keep predictions
    valid until the rescheduled kickoff; **cancelled** games void predictions.
@@ -88,9 +90,13 @@ shift toward chasing exact scores in spots where the field plays safe.
 3. **Goal-difference tier (tier 3) is the high-value safe play** for decisive games: pick
    the right winner and the most likely margin (margins cluster at 1 and 2). Banks 15/30
    reliably with tier 1 as upside.
-4. **Draws: only predict when the exact-score EV justifies the all-or-nothing risk.** Use
-   0–0 and 1–1 as the only sensible draw guesses. Up-weight draws in knockouts (regulation
-   rule).
+4. **Draws are a floor play, not a gamble.** A correctly-called draw banks 15/30 off *any*
+   draw scoreline (25/50 if exact), so predict a draw whenever P(draw) is high enough that
+   its EV beats the best decisive pick — not only when chasing an exact 0–0/1–1. 1–1 and
+   0–0 remain the best draw guesses because they also carry the exact-score upside and the
+   tiebreaker. In knockouts a game is scored as a draw whenever it is level at 90' — which
+   includes every game that goes to extra time — so KO draws are *more* common, not less;
+   lean into them, with a 30-point floor on a correct call.
 5. **Neutral venues, not home advantage.** Almost all matches are at neutral sites. Apply
    a host boost ONLY to USA, Canada, Mexico when playing in their own country. Do NOT
    apply generic home advantage — this is a common mistake the field will make.
@@ -108,8 +114,9 @@ shift toward chasing exact scores in spots where the field plays safe.
 - **Core model: independent Poisson + Dixon-Coles correction** for scorelines
   (`poisson_model.py:dixon_coles_grid`). Dixon-Coles re-weights the low-scoring cells
   (0-0, 1-0, 0-1, 1-1) where independent Poisson is empirically wrong. This is the default
-  because those exact low-score cells are precisely the high-value ones for us — they're
-  the ONLY draws that ever score points (draws are exact-or-zero). A bivariate Poisson is
+  because those low-score cells are precisely the high-value ones for us: any correct draw
+  call already banks the goal-difference tier (15/30), and nailing the *exact* low-score
+  draw (0–0, 1–1) adds the jump to 25/50 plus the exact-score tiebreaker. A bivariate Poisson is
   also implemented (`bivariate_poisson_grid`) as an alternative correlation mechanism. Use
   ONE, not both — stacking double-counts the correlation. The `rho` parameter (~ -0.05 to
   -0.15 for international football) should be fit on historical data.
@@ -168,8 +175,9 @@ notebooks/           # exploration
 - Python 3.11+. Use `uv` or `pip` with the provided `requirements.txt`.
 - `scoring.py` is the most safety-critical file — it encodes the rules above. It must be a
   pure function with an exhaustive test suite covering every tier and the draw/knockout
-  edge cases. **If you change scoring.py, run the tests and re-verify against the official
-  examples in this file.** A wrong scoring function silently corrupts every prediction.
+  edge cases. **If you change scoring.py, run the tests and re-verify against the
+  simulator-verified examples in this file and in tests/test_scoring.py.** A wrong scoring
+  function silently corrupts every prediction.
 - Keep the model and the optimizer decoupled: the model only produces probabilities; all
   rule-specific logic lives in scoring.py + optimizer.py. This lets us re-tune strategy
   without touching the model.

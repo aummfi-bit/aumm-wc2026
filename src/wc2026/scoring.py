@@ -33,15 +33,17 @@ def score_prediction(
     Scores are evaluated top-down; the highest matching tier wins.
 
     Knockout games are scored at the END OF REGULATION (90 min) only — the
-    caller is responsible for passing the regulation score (extra-time goals
-    and penalties must already be stripped out). `knockout=True` only applies
-    the 2x weight.
+    caller is responsible for passing the 90-minute score (extra-time goals and
+    the penalty shootout must already be stripped out). A game level after 90'
+    is therefore scored as a draw even if it was later decided in extra time or
+    on penalties. `knockout=True` only applies the 2x weight.
 
-    Draws are all-or-nothing: only an exact-score match scores. The
-    intermediate tiers require a real winner, and goal difference carries no
-    information when the game is tied, so a non-exact draw prediction scores 0
-    even if you correctly called it a draw. (Official example: real 0-0,
-    guess 1-1 -> 0.)
+    Draws are NOT all-or-nothing. A correctly-called draw lands on the
+    goal-difference tier (tier 3): every draw prediction has goal difference 0,
+    which matches a real draw's 0, so ANY draw prediction scores tier 3 against
+    a real draw (and 25 if the score is also exact). Only a *decisive*
+    prediction on a real draw scores 0. (Dacopa simulator: real 3-3, guess
+    3-3 -> 25; guess 2-2 / 1-1 / 0-0 -> 15; guess 3-0 / 3-1 / 2-1 -> 0.)
     """
     points = _base_points(pred_home, pred_away, real_home, real_away)
     if knockout:
@@ -58,9 +60,12 @@ def _base_points(ph: int, pa: int, rh: int, ra: int) -> int:
     pred_draw = ph == pa
 
     if real_draw:
-        # On a real draw, the only scoring tier is exact (handled above).
-        # A non-exact draw prediction, or any decisive prediction, scores 0.
-        return NOTHING
+        # No winner exists, so tiers 2/4/5 (which all require a winner) cannot
+        # apply. The only reachable tier is the goal-difference tier (tier 3):
+        # every draw prediction has goal difference 0, matching the real draw's
+        # 0, so any non-exact draw prediction scores 15. A decisive prediction
+        # has a non-zero goal difference and matches nothing -> 0.
+        return WINNER_AND_GOAL_DIFF if pred_draw else NOTHING
 
     # From here the real result is decisive.
     real_home_won = rh > ra

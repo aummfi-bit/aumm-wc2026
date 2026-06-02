@@ -54,8 +54,10 @@ Good first prompts:
 - "Generate EV-optimal predictions for all 72 group-stage fixtures to outputs/."
 - "Before the Round of 16, re-run predictions for the confirmed matchups."
 
-## Open action item
+## Scoring rules — verified
 
-There is a **known ambiguity** in Dacopa's published scoring table (see the note
-in `CLAUDE.md` and `tests/test_scoring.py`). Verify the goal-difference vs
-winner-only tier behavior against the live app before locking predictions.
+The full 6-tier ladder has been verified against Dacopa's live scoring simulator
+(see `CLAUDE.md` and `tests/test_scoring.py`). The key correction: **draws score the
+goal-difference tier (15/30) on any draw guess** — they are not exact-or-zero. Knockouts
+are scored on the **90-minute** result (extra time and penalties don't count, so a game
+level at 90' is a draw even if later decided in ET/pens), and weighted 2×.
