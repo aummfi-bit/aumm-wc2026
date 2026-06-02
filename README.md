@@ -39,8 +39,8 @@ Place your Kaggle international-results CSV in `data/raw/` (gitignored).
 # Demo a single match prediction (hand-set expected goals)
 PYTHONPATH=src python -m wc2026.pipeline
 
-# Run the tests (scoring.py must always pass)
-PYTHONPATH=src pytest tests/
+# Run the tests (scoring.py must always pass; pytest.ini sets pythonpath=src)
+pytest
 ```
 
 ## Working with Claude Code
