@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.DS_Store
+# Raw source data is not committed — place Kaggle CSVs here locally
+data/raw/*
+!data/raw/.gitkeep
+# Generated outputs
+outputs/*
+!outputs/.gitkeep
