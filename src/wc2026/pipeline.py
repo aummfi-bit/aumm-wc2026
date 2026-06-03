@@ -77,18 +77,22 @@ def predict_match_from_elo(
     return record
 
 
-def generate_group_slate() -> "pd.DataFrame":
+def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.DataFrame":
     """Produce EV-optimal predictions for all 72 group-stage matches.
 
     Fits ratings + goal model on the full history (calibrated config), loads the
     2026 group draw, and predicts each round-robin fixture. One row per match
     with the pick, win/draw/loss probabilities, expected goals, and EV.
+
+    If `results_2026` (played matches so far) is given, the ratings are updated
+    in-tournament with mean reversion before predicting — so re-running before
+    MD2/MD3 reflects what has actually happened.
     """
     import pandas as pd
 
     from . import config
     from .data_loader import load_results
-    from .ratings import compute_ratings, rate_matches
+    from .ratings import compute_ratings, rate_matches, update_ratings_in_tournament
     from .goal_model import fit_goal_model
     from .fixtures import load_groups, group_stage_fixtures
 
@@ -97,6 +101,12 @@ def generate_group_slate() -> "pd.DataFrame":
         results, home_advantage=config.HOME_ADVANTAGE
     ).set_index("team")["rating"]
     params = fit_goal_model(rate_matches(results, home_advantage=config.HOME_ADVANTAGE))
+
+    if results_2026 is not None and len(results_2026):
+        updated = update_ratings_in_tournament(
+            elo.to_dict(), results_2026, home_advantage=config.HOME_ADVANTAGE
+        )
+        elo = pd.Series(updated)
 
     fixtures = group_stage_fixtures(load_groups())
     rows = []
@@ -121,8 +131,14 @@ if __name__ == "__main__":
     from pathlib import Path
 
     from .markets import load_tipsheet, annotate_slate
+    from .fixtures import load_results_2026
 
-    slate = annotate_slate(generate_group_slate(), tipsheet=load_tipsheet())
+    played = load_results_2026()
+    if len(played):
+        print(f"Updating ratings with {len(played)} played 2026 result(s).")
+    slate = annotate_slate(
+        generate_group_slate(results_2026=played), tipsheet=load_tipsheet()
+    )
     out_path = Path(__file__).resolve().parents[2] / "outputs" / "group_predictions.csv"
     slate.to_csv(out_path, index=False)
     print(f"Wrote {len(slate)} group-stage predictions (with field flags) to {out_path}")

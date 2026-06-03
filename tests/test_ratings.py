@@ -10,6 +10,7 @@ import pytest
 from wc2026.ratings import (
     expected_score, update_elo, margin_multiplier, match_importance,
     revert_to_prior, compute_ratings, rate_matches, DEFAULT_ELO,
+    update_ratings_in_tournament,
 )
 from wc2026.data_loader import MARTJ42_DIR, load_results
 
@@ -81,6 +82,38 @@ def test_home_advantage_only_off_neutral():
     a_neutral = neutral.loc[neutral.team == "A", "rating"].iloc[0]
     a_home = home.loc[home.team == "A", "rating"].iloc[0]
     assert a_neutral > a_home
+
+
+def _played(home, away, hs, as_):
+    return pd.DataFrame([{
+        "date": pd.Timestamp("2026-06-11"), "home_team": home, "away_team": away,
+        "home_score": hs, "away_score": as_, "neutral": True,
+    }])
+
+
+def test_in_tournament_empty_returns_base():
+    base = {"A": 1800.0, "B": 1500.0}
+    out = update_ratings_in_tournament(base, pd.DataFrame())
+    assert out == base
+    assert out is not base                              # a copy
+
+
+def test_in_tournament_full_reversion_stays_at_base():
+    base = {"A": 1800.0, "B": 1500.0}
+    out = update_ratings_in_tournament(base, _played("A", "B", 0, 3), reversion=1.0)
+    assert out["A"] == 1800.0 and out["B"] == 1500.0    # update fully reverted away
+
+
+def test_in_tournament_update_moves_and_reversion_dampens():
+    base = {"A": 1500.0, "B": 1800.0}
+    # Underdog A beats favourite B -> A rises, B falls.
+    full = update_ratings_in_tournament(base, _played("A", "B", 2, 0), reversion=0.0)
+    damped = update_ratings_in_tournament(base, _played("A", "B", 2, 0), reversion=0.5)
+    assert full["A"] > base["A"] > 1500.0 - 1            # A gained
+    assert full["B"] < base["B"]                         # B dropped
+    assert base["A"] < damped["A"] < full["A"]           # reversion pulls back toward base
+    assert base["B"] > damped["B"] > full["B"]
+    assert {"A", "B"} == set(full)                        # base not mutated elsewhere
 
 
 def test_rate_matches_adds_prematch_elo():

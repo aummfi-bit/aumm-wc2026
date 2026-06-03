@@ -18,6 +18,7 @@ import pandas as pd
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 GROUPS_CSV = DATA_DIR / "groups_2026.csv"
+RESULTS_2026_CSV = DATA_DIR / "results_2026.csv"
 
 # Host nations get the home/host boost (only these three, per CLAUDE.md).
 HOSTS = {"United States", "Canada", "Mexico"}
@@ -26,6 +27,21 @@ HOSTS = {"United States", "Canada", "Mexico"}
 def load_groups(path: Path = GROUPS_CSV) -> pd.DataFrame:
     """Load the group draw as a (group, team) table."""
     return pd.read_csv(path)
+
+
+def load_results_2026(path: Path = RESULTS_2026_CSV) -> pd.DataFrame:
+    """Load played 2026 results so far (empty until the tournament starts).
+
+    Columns: date, home_team, away_team, home_score, away_score, neutral,
+    matchday, group. Appended to as matches finish; feeds in-tournament rating
+    updates and (later) the qualification-scenario layer.
+    """
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_csv(path)
+    if "date" in df.columns and len(df):
+        df["date"] = pd.to_datetime(df["date"])
+    return df
 
 
 def group_stage_fixtures(groups: pd.DataFrame) -> pd.DataFrame:

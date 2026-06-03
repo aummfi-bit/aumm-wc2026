@@ -155,3 +155,47 @@ def rate_matches(
     out["elo_home_pre"] = pre_home
     out["elo_away_pre"] = pre_away
     return out
+
+
+def update_ratings_in_tournament(
+    base: "dict[str, float] | pd.Series",
+    matches: pd.DataFrame,
+    reversion: float = 0.40,
+    k: float = IMPORTANCE_WORLD_CUP,
+    home_advantage: float = 0.0,
+    default_elo: float = DEFAULT_ELO,
+) -> dict[str, float]:
+    """Update the pre-tournament ratings with in-tournament results.
+
+    Starts from the frozen pre-tournament `base` prior and applies each played
+    match as a high-importance (World Cup K) Elo update, then pulls each team
+    partway back toward ITS OWN base via revert_to_prior — so a single fluky
+    result in the short 3-game group stage doesn't distort the rest of the run.
+    `reversion` in [0, 1]: 0 = full Elo movement, 1 = ratings never leave base.
+
+    `matches` needs home_team, away_team, home_score, away_score, and optionally
+    `neutral` (default True — WC matches are neutral bar host games) and `date`
+    to order by. Returns a fresh team->rating dict; `base` is not mutated.
+    """
+    base = dict(base)
+    current = dict(base)
+    if matches is None or len(matches) == 0:
+        return current
+
+    m = matches.sort_values("date") if "date" in matches.columns else matches
+    has_neutral = "neutral" in m.columns
+    for row in m.itertuples(index=False):
+        home, away = row.home_team, row.away_team
+        rh = current.get(home, base.get(home, default_elo))
+        ra = current.get(away, base.get(away, default_elo))
+
+        neutral = bool(getattr(row, "neutral")) if has_neutral else True
+        adv = 0.0 if neutral else home_advantage
+        exp_home = expected_score(rh + adv, ra)
+        goal_diff = int(row.home_score) - int(row.away_score)
+        actual_home = 1.0 if goal_diff > 0 else (0.5 if goal_diff == 0 else 0.0)
+
+        delta = k * margin_multiplier(goal_diff) * (actual_home - exp_home)
+        current[home] = revert_to_prior(rh + delta, base.get(home, default_elo), reversion)
+        current[away] = revert_to_prior(ra - delta, base.get(away, default_elo), reversion)
+    return current
