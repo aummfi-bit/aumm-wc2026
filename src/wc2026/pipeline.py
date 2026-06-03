@@ -77,7 +77,10 @@ def predict_match_from_elo(
     return record
 
 
-def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.DataFrame":
+def generate_group_slate(
+    results_2026: "pd.DataFrame | None" = None,
+    overrides: "pd.DataFrame | None" = None,
+) -> "pd.DataFrame":
     """Produce EV-optimal predictions for all 72 group-stage matches.
 
     Fits ratings + goal model on the full history (calibrated config), loads the
@@ -85,8 +88,9 @@ def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.Data
     with the pick, win/draw/loss probabilities, expected goals, and EV.
 
     If `results_2026` (played matches so far) is given, the ratings are updated
-    in-tournament with mean reversion before predicting — so re-running before
-    MD2/MD3 reflects what has actually happened.
+    in-tournament with mean reversion before predicting. `overrides` applies
+    manual lineup/team-news Elo deltas, which take precedence over the scenario
+    motivation prior for any team that has one (observed beats guess).
     """
     import pandas as pd
 
@@ -95,6 +99,7 @@ def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.Data
     from .ratings import compute_ratings, rate_matches, update_ratings_in_tournament
     from .goal_model import fit_goal_model
     from .fixtures import load_groups, group_stage_fixtures
+    from .overrides import elo_delta_for
 
     results = load_results()
     elo = compute_ratings(
@@ -117,8 +122,10 @@ def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.Data
 
     rows = []
     for fx in fixtures.itertuples(index=False):
+        ovr_h = elo_delta_for(overrides, fx.home_team, fx.away_team)
+        ovr_a = elo_delta_for(overrides, fx.away_team, fx.home_team)
         mu_h, mu_a = expected_goals(
-            elo[fx.home_team], elo[fx.away_team], params,
+            elo[fx.home_team] + ovr_h, elo[fx.away_team] + ovr_a, params,
             host_home=fx.host_home, host_away=fx.host_away, knockout=False,
             ko_factor=config.KO_FACTOR, goal_scale=config.GOAL_SCALE,
         )
@@ -127,7 +134,10 @@ def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.Data
             scen_h, scen_a = classify_match(
                 group_teams[fx.group], fx.home_team, fx.away_team, results_2026
             )
-            mu_h, mu_a = adjust_expected_goals(mu_h, mu_a, scen_h, scen_a)
+            # A manual override supersedes the motivation prior for that team.
+            eff_h = "ALIVE" if ovr_h else scen_h
+            eff_a = "ALIVE" if ovr_a else scen_a
+            mu_h, mu_a = adjust_expected_goals(mu_h, mu_a, eff_h, eff_a)
 
         rec = predict_match(mu_h, mu_a, rho=config.RHO, knockout=False)
         h, a = rec["prediction"]
@@ -138,6 +148,7 @@ def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.Data
             "mu_home": round(mu_h, 2), "mu_away": round(mu_a, 2),
             "exp_points": rec["expected_points"],
             "scen_home": scen_h, "scen_away": scen_a,
+            "ovr_home": ovr_h, "ovr_away": ovr_a,
         })
     return pd.DataFrame(rows)
 
@@ -147,12 +158,17 @@ if __name__ == "__main__":
 
     from .markets import load_tipsheet, annotate_slate
     from .fixtures import load_results_2026
+    from .overrides import load_overrides
 
     played = load_results_2026()
+    overrides = load_overrides()
     if len(played):
         print(f"Updating ratings with {len(played)} played 2026 result(s).")
+    if len(overrides):
+        print(f"Applying {len(overrides)} manual override(s).")
     slate = annotate_slate(
-        generate_group_slate(results_2026=played), tipsheet=load_tipsheet()
+        generate_group_slate(results_2026=played, overrides=overrides),
+        tipsheet=load_tipsheet(),
     )
     out_path = Path(__file__).resolve().parents[2] / "outputs" / "group_predictions.csv"
     slate.to_csv(out_path, index=False)
