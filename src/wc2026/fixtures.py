@@ -19,9 +19,26 @@ import pandas as pd
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 GROUPS_CSV = DATA_DIR / "groups_2026.csv"
 RESULTS_2026_CSV = DATA_DIR / "results_2026.csv"
+SCHEDULE_CSV = DATA_DIR / "schedule_2026.csv"
 
 # Host nations get the home/host boost (only these three, per CLAUDE.md).
 HOSTS = {"United States", "Canada", "Mexico"}
+
+
+def load_schedule(path: Path = SCHEDULE_CSV) -> pd.DataFrame:
+    """Load the official group schedule (date, matchday, group, home, away)."""
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_csv(path, parse_dates=["date"])
+
+
+def scheduled_fixtures(schedule: pd.DataFrame) -> pd.DataFrame:
+    """Group fixtures from the official schedule: dated, matchday-labelled, with
+    the official home/away orientation and host flags."""
+    df = schedule.copy()
+    df["host_home"] = df["home_team"].isin(HOSTS)
+    df["host_away"] = df["away_team"].isin(HOSTS)
+    return df[["date", "matchday", "group", "home_team", "away_team", "host_home", "host_away"]]
 
 
 def load_groups(path: Path = GROUPS_CSV) -> pd.DataFrame:

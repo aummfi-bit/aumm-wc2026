@@ -116,14 +116,17 @@ def generate_group_slate(
     import pandas as pd
 
     from . import config
-    from .fixtures import load_groups, group_stage_fixtures
+    from .fixtures import (
+        load_groups, group_stage_fixtures, load_schedule, scheduled_fixtures,
+    )
     from .overrides import elo_delta_for
     from .scenarios import classify_match, adjust_expected_goals
 
     elo, params = _current_ratings_and_params(results_2026)
 
     groups = load_groups()
-    fixtures = group_stage_fixtures(groups)
+    schedule = load_schedule()
+    fixtures = scheduled_fixtures(schedule) if len(schedule) else group_stage_fixtures(groups)
     group_teams = {g: list(sub["team"]) for g, sub in groups.groupby("group")}
     use_scenarios = results_2026 is not None and len(results_2026)
 
@@ -149,6 +152,7 @@ def generate_group_slate(
         rec = predict_match(mu_h, mu_a, rho=config.RHO, knockout=False)
         h, a = rec["prediction"]
         rows.append({
+            "date": getattr(fx, "date", None), "matchday": getattr(fx, "matchday", None),
             "group": fx.group, "home": fx.home_team, "away": fx.away_team,
             "prediction": f"{h}-{a}",
             "p_home": rec["p_home"], "p_draw": rec["p_draw"], "p_away": rec["p_away"],
@@ -157,7 +161,10 @@ def generate_group_slate(
             "scen_home": scen_h, "scen_away": scen_a,
             "ovr_home": ovr_h, "ovr_away": ovr_a,
         })
-    return pd.DataFrame(rows)
+    slate = pd.DataFrame(rows)
+    if "date" in slate.columns and slate["date"].notna().any():
+        slate = slate.sort_values(["date", "group"]).reset_index(drop=True)
+    return slate
 
 
 def generate_knockout_slate(
