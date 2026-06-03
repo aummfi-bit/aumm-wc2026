@@ -68,6 +68,18 @@ def test_expected_goals_behaviour():
     assert mhk < mh and mak < ma
 
 
+def test_host_factor_scales_boost():
+    p = GoalModelParams(b0=0.2, b_elo=0.15, b_home=0.30)
+    neutral, _ = expected_goals(1500, 1500, p, host_home=0.0)
+    half, _ = expected_goals(1500, 1500, p, host_home=0.5)
+    full, _ = expected_goals(1500, 1500, p, host_home=1.0)
+    assert neutral < half < full                       # more host factor -> more goals
+    assert abs(full - neutral * math.exp(0.30)) < 1e-9   # factor 1.0 == full b_home
+    # A boolean still works (True -> full, False -> neutral).
+    assert expected_goals(1500, 1500, p, host_home=True)[0] == full
+    assert expected_goals(1500, 1500, p, host_home=False)[0] == neutral
+
+
 def test_expected_goals_symmetry():
     p = GoalModelParams(b0=0.2, b_elo=0.15, b_home=0.25)
     mh_ab, ma_ab = expected_goals(1700, 1400, p)

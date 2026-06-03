@@ -136,8 +136,9 @@ def generate_group_slate(
         ovr_a = elo_delta_for(overrides, fx.away_team, fx.home_team)
         mu_h, mu_a = expected_goals(
             elo[fx.home_team] + ovr_h, elo[fx.away_team] + ovr_a, params,
-            host_home=fx.host_home, host_away=fx.host_away, knockout=False,
-            ko_factor=config.KO_FACTOR, goal_scale=config.GOAL_SCALE,
+            host_home=config.HOST_FACTORS.get(fx.home_team, 0.0),
+            host_away=config.HOST_FACTORS.get(fx.away_team, 0.0),
+            knockout=False, ko_factor=config.KO_FACTOR, goal_scale=config.GOAL_SCALE,
         )
         scen_h = scen_a = "ALIVE"
         if use_scenarios:
@@ -187,23 +188,20 @@ def generate_knockout_slate(
     import pandas as pd
 
     from . import config
-    from .fixtures import HOSTS
     from .overrides import elo_delta_for
 
     elo, params = _current_ratings_and_params(results_2026)
-    has_host_cols = {"host_home", "host_away"} <= set(ko_fixtures.columns)
 
     rows = []
     for fx in ko_fixtures.itertuples(index=False):
         home, away = fx.home_team, fx.away_team
         ovr_h = elo_delta_for(overrides, home, away)
         ovr_a = elo_delta_for(overrides, away, home)
-        host_home = bool(fx.host_home) if has_host_cols else (home in HOSTS)
-        host_away = bool(fx.host_away) if has_host_cols else (away in HOSTS)
 
         rec = predict_match_from_elo(
             elo[home] + ovr_h, elo[away] + ovr_a, params,
-            host_home=host_home, host_away=host_away, knockout=True,
+            host_home=config.HOST_FACTORS.get(home, 0.0),
+            host_away=config.HOST_FACTORS.get(away, 0.0), knockout=True,
             rho=config.RHO, ko_factor=config.KO_FACTOR, goal_scale=config.GOAL_SCALE,
         )
         h, a = rec["prediction"]

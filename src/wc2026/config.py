@@ -27,3 +27,14 @@ HOME_ADVANTAGE = 65.0   # Elo home bump used when fitting ratings (backtest mild
 RHO = -0.12             # Dixon-Coles low-score correction
 KO_FACTOR = 0.85        # knockout goal-suppression multiplier
 GOAL_SCALE = 1.10       # corrects the WC goal under-prediction (2.37 -> ~2.61)
+
+# Per-host home advantage as a FRACTION of the fitted home term b_home. Almost
+# every WC match is neutral (factor 0 -> no boost); only the three hosts get one,
+# and not equally: Mexico's Azteca-altitude + crowd edge is strongest, the USA's
+# big-but-often-neutral crowds less, Canada's the least. These are judgment
+# priors (not fitted) and are tunable.
+HOST_FACTORS = {
+    "Mexico": 1.00,
+    "United States": 0.60,
+    "Canada": 0.45,
+}
