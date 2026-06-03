@@ -5,6 +5,7 @@ import pandas as pd
 from wc2026.markets import (
     implied_prob_from_decimal_odds, devig_two_way,
     field_prediction, differentiation, annotate_slate,
+    load_tipsheet, tipsheet_pick, TIPSHEET_CSV,
 )
 
 
@@ -49,3 +50,33 @@ def test_annotate_slate():
     assert list(out["field_pick"]) == ["2-1", "1-1"]
     assert out.loc[0, "agrees"]                       # 2-1 matches field
     assert out.loc[1, "agrees"]                       # both 1-1 (even game)
+
+
+def test_differentiation_explicit_field_pick():
+    # With a field pick passed in, the heuristic is bypassed.
+    d = differentiation(0.70, 0.20, 0.10, our_pred=(2, 1), field_pick=(3, 0))
+    assert d["field_pick"] == "3-0" and not d["agrees"] and d["edge"] == "margin"
+
+
+def test_tipsheet_pick_orientation():
+    sheet = {("Brazil", "Morocco"): (2, 1)}
+    assert tipsheet_pick(sheet, "Brazil", "Morocco") == (2, 1)
+    assert tipsheet_pick(sheet, "Morocco", "Brazil") == (1, 2)   # re-oriented
+    assert tipsheet_pick(sheet, "Spain", "Japan") is None        # not in sheet
+
+
+def test_annotate_slate_with_tipsheet():
+    slate = pd.DataFrame({
+        "home": ["Brazil"], "away": ["Morocco"], "prediction": ["2-0"],
+        "p_home": [0.55], "p_draw": [0.25], "p_away": [0.20],
+    })
+    out = annotate_slate(slate, tipsheet={("Morocco", "Brazil"): (1, 2)})  # swapped
+    assert out.loc[0, "field_pick"] == "2-1"                     # re-oriented to Brazil-Morocco
+    assert not out.loc[0, "agrees"] and out.loc[0, "edge"] == "margin"
+
+
+def test_real_tipsheet_loads_72():
+    if not TIPSHEET_CSV.exists():
+        return
+    sheet = load_tipsheet()
+    assert len(sheet) == 72

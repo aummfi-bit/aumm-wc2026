@@ -120,8 +120,20 @@ def generate_group_slate() -> "pd.DataFrame":
 if __name__ == "__main__":
     from pathlib import Path
 
-    slate = generate_group_slate()
+    from .markets import load_tipsheet, annotate_slate
+
+    slate = annotate_slate(generate_group_slate(), tipsheet=load_tipsheet())
     out_path = Path(__file__).resolve().parents[2] / "outputs" / "group_predictions.csv"
     slate.to_csv(out_path, index=False)
-    print(f"Wrote {len(slate)} group-stage predictions to {out_path}")
-    print(slate.to_string(index=False))
+    print(f"Wrote {len(slate)} group-stage predictions (with field flags) to {out_path}")
+
+    print(f"\nAgreement with the field tip sheet: {slate['agrees'].mean():.0%}")
+    print("Edge breakdown:")
+    print(slate["edge"].value_counts().to_string())
+
+    flagged = slate[slate["edge"].isin(["winner_contrarian", "draw_we_see"])]
+    if len(flagged):
+        print("\nHIGH-VALUE DIVERGENCES (review these):")
+        cols = ["group", "home", "away", "prediction", "field_pick",
+                "p_home", "p_draw", "p_away", "edge"]
+        print(flagged[cols].to_string(index=False))
