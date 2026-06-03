@@ -34,7 +34,7 @@ GOAL_SCALE = 1.10       # corrects the WC goal under-prediction (2.37 -> ~2.61)
 # big-but-often-neutral crowds less, Canada's the least. These are judgment
 # priors (not fitted) and are tunable.
 HOST_FACTORS = {
-    "Mexico": 1.00,
-    "United States": 0.60,
-    "Canada": 0.45,
+    "Mexico": 1.15,
+    "United States": 0.90,
+    "Canada": 0.50,
 }
