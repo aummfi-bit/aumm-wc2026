@@ -242,8 +242,11 @@ if __name__ == "__main__":
     print("Edge breakdown:")
     print(slate["edge"].value_counts().to_string())
 
-    flagged = slate[slate["edge"].isin(["winner_contrarian", "draw_we_see"])]
+    high_value_edges = ["winner_contrarian", "draw_we_see", "draw_field_only"]
+    flagged = slate[slate["edge"].isin(high_value_edges)].copy()
     if len(flagged):
+        order = {e: i for i, e in enumerate(high_value_edges)}
+        flagged = flagged.sort_values("edge", key=lambda c: c.map(order))
         print("\nHIGH-VALUE DIVERGENCES (review these):")
         cols = ["group", "home", "away", "prediction", "field_pick",
                 "p_home", "p_draw", "p_away", "edge"]
