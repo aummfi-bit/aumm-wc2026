@@ -29,6 +29,18 @@ def load_groups(path: Path = GROUPS_CSV) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+def load_knockout_fixtures(path: Path = DATA_DIR / "knockout_fixtures_2026.csv") -> pd.DataFrame:
+    """Load confirmed knockout matchups (empty until the bracket fills).
+
+    Columns: round, home_team, away_team, and optionally host_home/host_away.
+    Filled in round by round as the two teams of each KO match are known —
+    Dacopa has no pre-bracket commitment, so we predict each once confirmed.
+    """
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_csv(path)
+
+
 def load_results_2026(path: Path = RESULTS_2026_CSV) -> pd.DataFrame:
     """Load played 2026 results so far (empty until the tournament starts).
 
