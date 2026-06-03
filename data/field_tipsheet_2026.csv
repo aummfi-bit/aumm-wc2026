@@ -1,0 +1,73 @@
+home,away,h_score,a_score
+Mexico,South Africa,3,0
+South Korea,Czech Republic,1,2
+Czech Republic,South Africa,2,0
+Mexico,South Korea,2,1
+Czech Republic,Mexico,1,2
+South Africa,South Korea,1,2
+Canada,Bosnia and Herzegovina,2,1
+Qatar,Switzerland,0,2
+Switzerland,Bosnia and Herzegovina,2,0
+Canada,Qatar,3,0
+Switzerland,Canada,1,1
+Bosnia and Herzegovina,Qatar,2,1
+Haiti,Scotland,1,2
+Brazil,Morocco,2,1
+Brazil,Haiti,4,0
+Scotland,Morocco,0,2
+Scotland,Brazil,0,3
+Morocco,Haiti,3,0
+United States,Paraguay,1,1
+Australia,Turkey,1,2
+Turkey,Paraguay,2,1
+United States,Australia,2,0
+Turkey,United States,2,1
+Paraguay,Australia,1,1
+Germany,Curaçao,4,0
+Ivory Coast,Ecuador,1,2
+Germany,Ivory Coast,2,1
+Ecuador,Curaçao,3,0
+Curaçao,Ivory Coast,0,2
+Ecuador,Germany,1,2
+Netherlands,Japan,2,1
+Sweden,Tunisia,2,0
+Netherlands,Sweden,2,0
+Tunisia,Japan,0,2
+Japan,Sweden,1,1
+Tunisia,Netherlands,0,3
+Iran,New Zealand,2,0
+Belgium,Egypt,2,1
+Belgium,Iran,2,0
+New Zealand,Egypt,0,2
+Egypt,Iran,1,1
+New Zealand,Belgium,0,3
+Saudi Arabia,Uruguay,0,2
+Spain,Cape Verde,3,0
+Spain,Saudi Arabia,3,0
+Uruguay,Cape Verde,2,1
+Cape Verde,Saudi Arabia,1,1
+Uruguay,Spain,1,2
+France,Senegal,2,1
+Iraq,Norway,0,2
+Norway,Senegal,1,2
+France,Iraq,4,0
+Norway,France,0,2
+Senegal,Iraq,3,0
+Argentina,Algeria,2,0
+Austria,Jordan,2,0
+Argentina,Austria,2,1
+Jordan,Algeria,1,2
+Algeria,Austria,1,2
+Jordan,Argentina,0,3
+Portugal,DR Congo,3,0
+Uzbekistan,Colombia,0,2
+Portugal,Uzbekistan,3,0
+Colombia,DR Congo,2,1
+DR Congo,Uzbekistan,2,1
+Colombia,Portugal,1,2
+Ghana,Panama,2,0
+England,Croatia,2,1
+England,Ghana,2,0
+Panama,Croatia,0,3
+Panama,England,0,3
+Croatia,Ghana,2,1
