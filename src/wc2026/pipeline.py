@@ -108,21 +108,36 @@ def generate_group_slate(results_2026: "pd.DataFrame | None" = None) -> "pd.Data
         )
         elo = pd.Series(updated)
 
-    fixtures = group_stage_fixtures(load_groups())
+    from .scenarios import classify_match, adjust_expected_goals
+
+    groups = load_groups()
+    fixtures = group_stage_fixtures(groups)
+    group_teams = {g: list(sub["team"]) for g, sub in groups.groupby("group")}
+    use_scenarios = results_2026 is not None and len(results_2026)
+
     rows = []
     for fx in fixtures.itertuples(index=False):
-        rec = predict_match_from_elo(
+        mu_h, mu_a = expected_goals(
             elo[fx.home_team], elo[fx.away_team], params,
             host_home=fx.host_home, host_away=fx.host_away, knockout=False,
-            rho=config.RHO, ko_factor=config.KO_FACTOR, goal_scale=config.GOAL_SCALE,
+            ko_factor=config.KO_FACTOR, goal_scale=config.GOAL_SCALE,
         )
+        scen_h = scen_a = "ALIVE"
+        if use_scenarios:
+            scen_h, scen_a = classify_match(
+                group_teams[fx.group], fx.home_team, fx.away_team, results_2026
+            )
+            mu_h, mu_a = adjust_expected_goals(mu_h, mu_a, scen_h, scen_a)
+
+        rec = predict_match(mu_h, mu_a, rho=config.RHO, knockout=False)
         h, a = rec["prediction"]
         rows.append({
             "group": fx.group, "home": fx.home_team, "away": fx.away_team,
             "prediction": f"{h}-{a}",
             "p_home": rec["p_home"], "p_draw": rec["p_draw"], "p_away": rec["p_away"],
-            "mu_home": rec["mu_home"], "mu_away": rec["mu_away"],
+            "mu_home": round(mu_h, 2), "mu_away": round(mu_a, 2),
             "exp_points": rec["expected_points"],
+            "scen_home": scen_h, "scen_away": scen_a,
         })
     return pd.DataFrame(rows)
 
