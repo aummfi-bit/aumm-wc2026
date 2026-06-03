@@ -103,18 +103,23 @@ def expected_goals(
     host_away: bool = False,
     knockout: bool = False,
     ko_factor: float = KO_FACTOR,
+    goal_scale: float = 1.0,
 ) -> tuple[float, float]:
     """Map two Elo ratings to (mu_home, mu_away).
 
     Venue/host: most WC matches are neutral, so host_home/host_away default to
     False; set host_home=True when the home-listed team is a host nation playing
     in its own country (USA/CAN/MEX). Knockout scales both means by ko_factor.
+    `goal_scale` is a calibration multiplier on both means: the regression is
+    fit on all competitive internationals, which score lower than World Cup
+    matches, so a scale > 1 corrects the under-prediction (see config.py /
+    backtest).
     """
     diff = (elo_home - elo_away) / ELO_SCALE
     eta_home = params.b0 + params.b_elo * diff + (params.b_home if host_home else 0.0)
     eta_away = params.b0 - params.b_elo * diff + (params.b_home if host_away else 0.0)
-    mu_home = float(np.exp(eta_home))
-    mu_away = float(np.exp(eta_away))
+    mu_home = float(np.exp(eta_home)) * goal_scale
+    mu_away = float(np.exp(eta_away)) * goal_scale
     if knockout:
         mu_home *= ko_factor
         mu_away *= ko_factor
